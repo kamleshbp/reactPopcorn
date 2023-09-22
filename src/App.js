@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import StarRating from "./StarRating";
 
 const KEY = "e00405df";
 const API_URL = `http://www.omdbapi.com/?apikey=${KEY}&`;
@@ -60,6 +61,15 @@ function App() {
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+
+  function handleMovieClick(movieId) {
+    setSelectedId((curId) => (curId === movieId ? null : movieId));
+  }
+
+  function handleCloseMovie() {
+    setSelectedId(null);
+  }
 
   useEffect(
     function () {
@@ -85,6 +95,8 @@ function App() {
           setIsLoading(false);
         }
       };
+
+      if (!query) setMovies([]);
       if (query.length >= 3) fetchMovie();
       return () => abortController.abort();
     },
@@ -102,11 +114,22 @@ function App() {
         <Box>
           {isLoading && <Loader />}
           {!isLoading && error && <ErrorMessage error={error} />}
-          {!isLoading && !error && <MovieList movies={movies} />}
+          {!isLoading && !error && (
+            <MovieList movies={movies} onMovieClick={handleMovieClick} />
+          )}
         </Box>
         <Box>
-          <WatchedSummary watched={watched} />
-          <WatchedMoviesList watched={watched} />
+          {selectedId ? (
+            <MovieDetails
+              selectedId={selectedId}
+              onCloseMovie={handleCloseMovie}
+            />
+          ) : (
+            <>
+              <WatchedSummary watched={watched} />
+              <WatchedMoviesList watched={watched} />
+            </>
+          )}
         </Box>
       </Main>
     </>
@@ -162,19 +185,19 @@ function Box({ children }) {
   );
 }
 
-function MovieList({ movies }) {
+function MovieList({ movies, onMovieClick }) {
   return (
     <ul className="list list-movies">
       {movies.map((movie) => (
-        <Movie movie={movie} key={movie.imdbID} />
+        <Movie movie={movie} key={movie.imdbID} onMovieClick={onMovieClick} />
       ))}
     </ul>
   );
 }
 
-function Movie({ movie }) {
+function Movie({ movie, onMovieClick }) {
   return (
-    <li>
+    <li onClick={() => onMovieClick(movie.imdbID)}>
       <img src={movie.Poster} alt={`${movie.Title} Poster`} />
       <h3>{movie.Title}</h3>
       <div>
@@ -262,18 +285,66 @@ function ErrorMessage({ error }) {
     </p>
   );
 }
-// function MovieDetails({ movie }) {
-//   return (
-//     <div className="details">
-//       <header>
-//         <button className="btn-back">&larr;</button>
-//         <img src={movie.Poster} alt={`Poster of ${movie.Title}`} />
-//         <div className="details-overview">
-//           <h2>{movie.Title}</h2>
-//         </div>
 
-//       </header>
-//     </div>
-//   );
-// }
+function MovieDetails({ selectedId, onCloseMovie }) {
+  const [movie, setMovie] = useState({});
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(
+    function () {
+      const fetchMovieDetails = async function () {
+        setIsLoading(true);
+        setError("");
+
+        try {
+          const res = await fetch(`${API_URL}i=${selectedId}`);
+          const data = await res.json();
+          setMovie(data);
+        } catch (err) {
+          setError("Something went wrong while fetching movie details");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchMovieDetails();
+    },
+    [selectedId]
+  );
+  return (
+    <div className="details">
+      {isLoading && <Loader />}
+      {!isLoading && error && <ErrorMessage error={error} />}
+      {!isLoading && !error && (
+        <>
+          <header>
+            <button onClick={onCloseMovie} className="btn-back">
+              &lArr;
+            </button>
+            <img src={movie.Poster} alt={`Poster of ${movie.Title} movie`} />
+            <div className="details-overview">
+              <h2>{movie.Title}</h2>
+              <p>
+                {movie.Released} &bull; {movie.Runtime}
+              </p>
+              <p>{movie.Genre}</p>
+              <p>
+                <span>⭐</span>
+                {movie.imdbRating} IMDb rating
+              </p>
+            </div>
+          </header>
+          <section>
+            <div className="rating">
+              <StarRating maxRating={10} size={24} />
+            </div>
+            <p>{movie.Plot}</p>
+            <p>Starring {movie.Actors}</p>
+            <p>Directed by {movie.Director}</p>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
 export default App;
