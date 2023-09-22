@@ -56,6 +56,7 @@ function App() {
         }
       };
 
+      handleCloseMovie();
       if (!query) setMovies([]);
       if (query.length >= 3) fetchMovie();
       return () => abortController.abort();
@@ -285,13 +286,14 @@ function MovieDetails({ selectedId, onCloseMovie, watched, onAddWatched }) {
       title,
       year,
       poster,
-      runtime: +runtime.split(" ")[0],
+      runtime: Number(runtime.split(" ")[0]),
       imdbRating: Number(imdbRating),
       userRating,
     };
     onAddWatched(watechedMovie);
     onCloseMovie();
   }
+
   useEffect(
     function () {
       const fetchMovieDetails = async function () {
@@ -312,6 +314,29 @@ function MovieDetails({ selectedId, onCloseMovie, watched, onAddWatched }) {
     },
     [selectedId]
   );
+
+  useEffect(
+    function () {
+      if (!title) return;
+      document.title = `Movie | ${title}`;
+      return () => (document.title = "ReactPopcorn");
+    },
+    [title]
+  );
+
+  useEffect(
+    function () {
+      function handleKeyDown(e) {
+        if (e.code === "Escape") {
+          onCloseMovie();
+        }
+      }
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    },
+    [onCloseMovie]
+  );
+
   return (
     <div className="details">
       {isLoading && <Loader />}
