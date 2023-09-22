@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const KEY = "e00405df";
+const API_URL = `http://www.omdbapi.com/?apikey=${KEY}&`;
+const POSTER_URL = `http://img.omdbapi.com/?apikey=${KEY}&`;
 
 const tempMovieData = [
   {
@@ -51,20 +55,58 @@ const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
 function App() {
+  const [movies, setMovies] = useState([]);
+  const [watched, setWatched] = useState(tempWatchedData);
+  const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(
+    function () {
+      const abortController = new AbortController();
+      const fetchMovie = async function () {
+        setIsLoading(true);
+        setError("");
+        try {
+          const res = await fetch(`${API_URL}s=${query}`, {
+            signal: abortController.signal,
+          });
+          const data = await res.json();
+          if (data.Response === "True") {
+            setMovies(data.Search);
+          } else {
+            throw Error(`We couldn't find any movies for "${query}"`);
+          }
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            setError(err.message);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      if (query.length >= 3) fetchMovie();
+      return () => abortController.abort();
+    },
+    [query]
+  );
+
   return (
     <>
       <NavBar>
         <Logo />
-        <SearchBar />
-        <NumResults />
+        <SearchBar query={query} onQuery={setQuery} />
+        <NumResults movies={movies} />
       </NavBar>
       <Main>
         <Box>
-          <MovieList />
+          {isLoading && <Loader />}
+          {!isLoading && error && <ErrorMessage error={error} />}
+          {!isLoading && !error && <MovieList movies={movies} />}
         </Box>
         <Box>
-          <WatchedSummary watched={tempWatchedData} />
-          <WatchedMoviesList watched={tempWatchedData} />
+          <WatchedSummary watched={watched} />
+          <WatchedMoviesList watched={watched} />
         </Box>
       </Main>
     </>
@@ -84,24 +126,22 @@ function Logo() {
   );
 }
 
-function SearchBar() {
-  const [query, setQuery] = useState("");
-
+function SearchBar({ query, onQuery }) {
   return (
     <input
       className="search"
       type="text"
       placeholder="Search movies..."
       value={query}
-      onChange={(e) => setQuery(e.target.value)}
+      onChange={(e) => onQuery(e.target.value)}
     />
   );
 }
 
-function NumResults() {
+function NumResults({ movies }) {
   return (
     <p className="num-results">
-      Found <strong>X</strong> results
+      Found <strong>{movies.length}</strong> results
     </p>
   );
 }
@@ -122,11 +162,11 @@ function Box({ children }) {
   );
 }
 
-function MovieList() {
+function MovieList({ movies }) {
   return (
     <ul className="list list-movies">
-      {tempMovieData.map((movie) => (
-        <Movie movie={movie} />
+      {movies.map((movie) => (
+        <Movie movie={movie} key={movie.imdbID} />
       ))}
     </ul>
   );
@@ -180,7 +220,7 @@ function WatchedMoviesList({ watched }) {
   return (
     <ul className="list">
       {watched.map((movie) => (
-        <WatchedMovie movie={movie} />
+        <WatchedMovie movie={movie} key={movie.imdbID} />
       ))}
     </ul>
   );
@@ -210,4 +250,30 @@ function WatchedMovie({ movie }) {
     </li>
   );
 }
+
+function Loader() {
+  return <p className="loader">Loading...</p>;
+}
+
+function ErrorMessage({ error }) {
+  return (
+    <p className="error">
+      <span>⛔️</span> {error}
+    </p>
+  );
+}
+// function MovieDetails({ movie }) {
+//   return (
+//     <div className="details">
+//       <header>
+//         <button className="btn-back">&larr;</button>
+//         <img src={movie.Poster} alt={`Poster of ${movie.Title}`} />
+//         <div className="details-overview">
+//           <h2>{movie.Title}</h2>
+//         </div>
+
+//       </header>
+//     </div>
+//   );
+// }
 export default App;
