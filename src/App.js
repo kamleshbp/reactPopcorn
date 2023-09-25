@@ -9,11 +9,13 @@ const average = (arr) =>
 
 function App() {
   const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState([]);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState(null);
+  const [watched, setWatched] = useState(function () {
+    return JSON.parse(localStorage.getItem("watched") || []);
+  });
 
   function handleMovieClick(movieId) {
     setSelectedId((curId) => (curId === movieId ? null : movieId));
@@ -62,6 +64,13 @@ function App() {
       return () => abortController.abort();
     },
     [query]
+  );
+
+  useEffect(
+    function () {
+      localStorage.setItem("watched", JSON.stringify(watched));
+    },
+    [watched]
   );
 
   return (
