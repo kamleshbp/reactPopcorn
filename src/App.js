@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import StarRating from "./StarRating";
+import { useKeyPress } from "./useKeyPress";
+import { useLocalStorageItem } from "./useLocalStorageItem";
 
 const KEY = "e00405df";
 const API_URL = `https://www.omdbapi.com/?apikey=${KEY}&`;
@@ -13,9 +15,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState(null);
-  const [watched, setWatched] = useState(function () {
-    return JSON.parse(localStorage.getItem("watched") || []);
-  });
+  const [watched, setWatched] = useLocalStorageItem([], "watched");
 
   function handleMovieClick(movieId) {
     setSelectedId((curId) => (curId === movieId ? null : movieId));
@@ -64,13 +64,6 @@ function App() {
       return () => abortController.abort();
     },
     [query]
-  );
-
-  useEffect(
-    function () {
-      localStorage.setItem("watched", JSON.stringify(watched));
-    },
-    [watched]
   );
 
   return (
@@ -127,21 +120,14 @@ function Logo() {
 function SearchBar({ query, onQuery }) {
   const searchBar = useRef(null);
 
-  useEffect(
+  useKeyPress(
+    "Enter",
     function () {
-      function handleEnterPress(e) {
-        if (e.code === "Enter") {
-          if (document.activeElement === searchBar.current) return;
-          searchBar.current.focus();
-          onQuery("");
-        }
-      }
-
-      document.addEventListener("keydown", handleEnterPress);
-
-      return () => document.removeEventListener("keydown", handleEnterPress);
+      if (document.activeElement === searchBar.current) return;
+      searchBar.current.focus();
+      onQuery("");
     },
-    [onQuery]
+    []
   );
 
   return (
